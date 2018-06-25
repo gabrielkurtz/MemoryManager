@@ -25,6 +25,8 @@
 
 import reader
 
+TIME = 0
+
 class Scheduler:
     def __init__(self, mode, swap_alg, page_size, memory_size, disk_size, commands=[]):
         # Mode: 0-Sequential, 1-Random
@@ -38,7 +40,6 @@ class Scheduler:
         self.commands = commands
 
         self.mm = MemoryManager(page_size, memory_size, disk_size)
-        self.time = 0
 
     def run(self):
         if self.mode == 0:
@@ -47,10 +48,10 @@ class Scheduler:
     def run_commands(self):
         
         for command in self.commands:
-            
+            print("Time:", TIME)
             # Create a new process
             if command[0].upper() == 'C':
-                print("\n----------------\nCreating process:{}\tSize:{}".format(command[1], command[2]))
+                print("\n----------------\nCreating process: {}\tSize: {}".format(command[1], command[2]))
                 self.mm.add_process(command[1], command[2])
                 self.mm.print_state()
             
@@ -60,7 +61,7 @@ class Scheduler:
 
             # Allocate more memory to process
             elif command[0].upper() == 'M':
-                print("\n----------------\nAllocating process:{}\tSize:{}".format(command[1], command[2]))
+                print("\n----------------\nAllocating process: {}\tSize: {}".format(command[1], command[2]))
                 self.mm.allocate(command[1], command[2])
                 self.mm.print_state()
 
@@ -70,6 +71,8 @@ class Scheduler:
 
             else:
                 print("--- ERROR: Invalid Command ---")
+
+            add_clock()
             
 class MemoryManager:
     def __init__(self, page_size, memory_size, disk_size):
@@ -115,35 +118,48 @@ class MemoryManager:
         remaining_size = allocated
         i = p.size
 
-        # Check if there is a page with idle space for this process
-        current_page = None
-        for page in self.memory:
-            if page.process == process_name and page.idle_space > 0:
-                current_page = page
-                break
-
-        # If there is a page with idle space, uses it
-        if current_page and allocated < current_page.idle_space:
-            for _ in range(0, allocated):
-                current_page.add(p, i)
+        while remaining_size:
+            # In case there's still room in the latest process' page
+            last_page = p.map[i-1][0]
+            if last_page.idle_space > 0:
+                last_page.add(p, i, )
                 i += 1
                 remaining_size -= 1
+                print("Funcionou 1")
+                continue
 
-        # Search for a new empty page if there is still need to allocate
-        while(remaining_size):
+            # Try to find a new empty page in memory
             current_page = None
             for page in self.memory:
                 if not(page.process):
                     current_page = page
                     break
 
+            # Found an empty memory page
             if current_page != None:
                 current_page.process = p.name
-                allocated = min(self.page_size, remaining_size)
-                for _ in range(0, allocated):
-                    current_page.add(p, i)
-                    i += 1
-                remaining_size -= allocated
+                current_page.add(p, i)
+                i += 1
+                remaining_size -= 1                
+                print("Funcionou 2")
+                continue
+            
+
+    def swap(page_1, page_2):
+        loc_1 = page_1.location
+        loc_2 = page_2.location
+        type_1 = page_1.level
+        type_2 = page_2.level
+
+
+        aux_page = page_1
+        page_1 = page_2
+        page_2 = aux_page
+
+        page_1.location = loc_1
+        page_2.location = loc_2
+        page_1.level = type_1
+        page_2.level = type_2
 
 
 
@@ -167,13 +183,15 @@ class Page:
         self.location = location
         self.process = None
         self.addresses = [None]*self.size
+        self.last_used = None
 
 
     def add(self, process, process_address):
         self.addresses[self.size-self.idle_space] = process_address
-        process.map[process_address] = self.location + self.size - self.idle_space - 1
+        process.map[process_address] = (self, self.size - self.idle_space)
         self.idle_space -= 1
         process.size += 1
+        self.last_used = TIME
 
 
 class Process:
@@ -182,6 +200,10 @@ class Process:
         self.size = 0
         self.map = {}
 
+
+def add_clock():
+    global TIME
+    TIME += 1
 
 if __name__ == "__main__":
     scheduler = reader.Reader("input.txt").read()
