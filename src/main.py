@@ -29,6 +29,7 @@ from random import randint
 
 TIME = 0
 
+
 class Scheduler:
     def __init__(self, mode, swap_alg, page_size, memory_size, disk_size, commands=[]):
         # Mode: 0-Sequential, 1-Random
@@ -48,24 +49,27 @@ class Scheduler:
             self.run_commands()
 
     def run_commands(self):
-        
+
         for command in self.commands:
             print("Time:", TIME)
             # Create a new process
             if command[0].upper() == 'C':
-                print("\n----------------\nCreating process: {}\tSize: {}".format(command[1], command[2]))
+                print(
+                    "\n----------------\nCreating process: {}\tSize: {}".format(command[1], command[2]))
                 self.mm.add_process(command[1], command[2])
                 self.mm.print_state()
-            
+
             # Access process data
             elif command[0].upper() == 'A':
-                print("\n----------------\nAccessing process: {}\tPos: {}".format(command[1], command[2]))
+                print(
+                    "\n----------------\nAccessing process: {}\tPos: {}".format(command[1], command[2]))
                 self.mm.access(command[1], command[2], self.swap_alg)
                 self.mm.print_state()
 
             # Allocate more memory to process
             elif command[0].upper() == 'M':
-                print("\n----------------\nAllocating process: {}\tSize: {}".format(command[1], command[2]))
+                print(
+                    "\n----------------\nAllocating process: {}\tSize: {}".format(command[1], command[2]))
                 self.mm.allocate(command[1], command[2])
                 self.mm.print_state()
 
@@ -77,7 +81,8 @@ class Scheduler:
                 print("--- ERROR: Invalid Command ---")
 
             add_clock()
-            
+
+
 class MemoryManager:
     def __init__(self, page_size, memory_size, disk_size, swap_alg):
         self.page_size = page_size
@@ -89,19 +94,19 @@ class MemoryManager:
         self.disk = []
         self.processes = {}
 
-        for i in range (0, memory_size//page_size):
+        for i in range(0, memory_size//page_size):
             self.memory.append(Page(page_size, (page_size*i), 'MEMORY'))
 
-        for i in range (0, disk_size//page_size):
-            self.disk.append(Page(page_size, (memory_size+(page_size*i)), 'DISK'))
-
+        for i in range(0, disk_size//page_size):
+            self.disk.append(
+                Page(page_size, (memory_size+(page_size*i)), 'DISK'))
 
     def add_process(self, process_name, process_size):
         p = Process(process_name)
         self.processes[process_name] = p
         remaining_size = process_size
-        
-        i=0
+
+        i = 0
         while remaining_size:
             current_page = None
             for page in self.memory:
@@ -116,7 +121,6 @@ class MemoryManager:
                     current_page.add(p, i)
                     i += 1
                 remaining_size -= allocated
-
 
     def allocate(self, process_name, allocated):
         p = self.processes[process_name]
@@ -144,54 +148,65 @@ class MemoryManager:
                 current_page.process = p.name
                 current_page.add(p, i)
                 i += 1
-                remaining_size -= 1                
+                remaining_size -= 1
                 continue
-            
+
             elif self.has_empty_page(self.disk):
                 for page in self.disk:
                     if not(page.process):
                         current_page = page
                         break
-                self.swap(current_page, self.get_swap_candidate(self.swap_alg))
-
+                swap_page = self.get_swap_candidate(self.swap_alg)
+                print("Page Location: {}  Elements: {}  -  Swap Page Loc: {}  Elements: {}".format(
+                    current_page.location, current_page.addresses, swap_page.location, swap_page.addresses))
+                self.swap(swap_page, current_page)
 
 
     def access(self, process_name, address, swap_alg):
         p = self.processes[process_name]
-        
+
         # Check if search is in valid range
         if not(0 < address < p.size-1):
-            print("--- ERROR: Invalid Address. Process: {} \tSize: {} \tRange: [0 - {}] ---".format(p.name, p.size, p.size-1))
+            print("--- ERROR: Invalid Address. Process: {} \tSize: {} \tRange: [0 - {}] ---".format(
+                p.name, p.size, p.size-1))
             return False
-        
+
         page = p.map[address][0]
         # Page is in already in memory
         if page.level == 'MEMORY':
             if page.process == p.name and page.addresses[p.map[address][1]] == address:
-                print("Data succesfully accessed. Process: {} \tAddress: {} \tFound: {}-{}".format(p.name, address, page.process, page.addresses[p.map[address][1]]))
+                print("Data succesfully accessed. Process: {} \tAddress: {} \tFound: {}-{}".format(
+                    p.name, address, page.process, page.addresses[p.map[address][1]]))
                 return True
 
         # Page is in disk (need to swap to memory)
         else:
             swap_page = self.get_swap_candidate(swap_alg)
-            swap(page, swap_page)
+            print("Page Location: {}  Elements: {}  -  Swap Page Loc: {}  Elements: {}".format(
+                page.location, page.addresses, swap_page.location, swap_page.addresses))
+            self.swap(swap_page, page)
 
+    def swap(self, mem_page, disk_page):
+        loc_1 = mem_page.location
+        loc_2 = disk_page.location
+        type_1 = mem_page.level
+        type_2 = disk_page.level
 
+        aux = mem_page
+        for i in range(0, len(self.memory)):
+            if self.memory[i] == mem_page:
+                disk_page.location = loc_1
+                disk_page.level = type_1
+                self.memory[i] = disk_page
+                break
 
-    def swap(self, page_1, page_2):
-        loc_1 = page_1.location
-        loc_2 = page_2.location
-        type_1 = page_1.level
-        type_2 = page_2.level
+        for i in range(0, len(self.disk)):
+            if self.disk[i] == disk_page:
+                aux.location = loc_2
+                aux.level = type_2
+                self.disk[i] = aux
+                break
 
-        aux_page = page_1
-        page_1 = page_2
-        page_2 = aux_page
-
-        page_1.location = loc_1
-        page_2.location = loc_2
-        page_1.level = type_1
-        page_2.level = type_2
 
 
     def get_swap_candidate(self, swap_alg):
@@ -199,15 +214,14 @@ class MemoryManager:
             return self.get_candidate_lru()
         elif swap_alg == 1:
             return self.get_candidate_random()
-    
+
     # TODO: implement lru algorithm
     def get_candidate_lru(self):
-        return self.memory[randint(0, len(self.memory)-1)]        
+        return self.memory[randint(0, 7)]
 
     # Return random memory page
     def get_candidate_random(self):
-        return self.memory[randint(0, len(self.memory)-1)]
-
+        return self.memory[randint(0, 7)]
 
     def has_empty_page(self, structure):
         for page in structure:
@@ -215,17 +229,18 @@ class MemoryManager:
                 return True
         return False
 
-
     def print_state(self):
         print("\nMemory:")
 
         for page in self.memory:
-            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(page.process), page.addresses, (page.location+self.page_size-1)))
+            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(
+                page.process), page.addresses, (page.location+self.page_size-1)))
 
         print("\nDisk:")
 
         for page in self.disk:
-            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(page.process), page.addresses, (page.location+self.page_size-1)))
+            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(
+                page.process), page.addresses, (page.location+self.page_size-1)))
 
 
 class Page:
@@ -238,7 +253,6 @@ class Page:
         self.addresses = [None]*self.size
         self.last_used = None
 
-
     def add(self, process, process_address):
         self.addresses[self.size-self.idle_space] = process_address
         process.map[process_address] = (self, self.size - self.idle_space)
@@ -248,6 +262,7 @@ class Page:
 
     def is_empty(self):
         return self.size == self.idle_space
+
 
 class Process:
     def __init__(self, name):
@@ -259,6 +274,7 @@ class Process:
 def add_clock():
     global TIME
     TIME += 1
+
 
 if __name__ == "__main__":
     scheduler = reader.Reader("input.txt").read()
