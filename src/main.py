@@ -27,8 +27,11 @@ import reader
 
 class Scheduler:
     def __init__(self, mode, swap_alg, page_size, memory_size, disk_size, commands=[]):
+        # Mode: 0-Sequential, 1-Random
         self.mode = mode
+        # Swap Algorithm: 0-LRU, 1-Random
         self.swap_alg = swap_alg
+
         self.page_size = page_size
         self.memory_size = memory_size
         self.disk_size = disk_size
@@ -38,8 +41,36 @@ class Scheduler:
         self.time = 0
 
     def run(self):
-        pass
+        if self.mode == 0:
+            self.run_commands()
 
+    def run_commands(self):
+        
+        for command in self.commands:
+            
+            # Create a new process
+            if command[0].upper() == 'C':
+                print("\n----------------\nCreating process:{}\tSize:{}".format(command[1], command[2]))
+                self.mm.add_process(command[1], command[2])
+                self.mm.print_state()
+            
+            # Access process data
+            elif command[0].upper() == 'A':
+                print("--- Not implemented yet ---")
+
+            # Allocate more memory to process
+            elif command[0].upper() == 'M':
+                print("\n----------------\nAllocating process:{}\tSize:{}".format(command[1], command[2]))
+                self.mm.allocate(command[1], command[2])
+                self.mm.print_state()
+
+            # Terminate process
+            elif command[0].upper() == 'T':
+                print("--- Not implemented yet ---")
+
+            else:
+                print("--- ERROR: Invalid Command ---")
+            
 class MemoryManager:
     def __init__(self, page_size, memory_size, disk_size):
         self.page_size = page_size
@@ -58,12 +89,48 @@ class MemoryManager:
 
 
     def add_process(self, process_name, process_size):
-        p = Process(process_name, process_size)
+        p = Process(process_name)
         self.processes[process_name] = p
         remaining_size = process_size
         
         i=0
         while remaining_size:
+            current_page = None
+            for page in self.memory:
+                if not(page.process):
+                    current_page = page
+                    break
+
+            if current_page != None:
+                current_page.process = p.name
+                allocated = min(self.page_size, remaining_size)
+                for _ in range(0, allocated):
+                    current_page.add(p, i)
+                    i += 1
+                remaining_size -= allocated
+
+
+    def allocate(self, process_name, allocated):
+        p = self.processes[process_name]
+        remaining_size = allocated
+        i = p.size
+
+        # Check if there is a page with idle space for this process
+        current_page = None
+        for page in self.memory:
+            if page.process == process_name and page.idle_space > 0:
+                current_page = page
+                break
+
+        # If there is a page with idle space, uses it
+        if current_page and allocated < current_page.idle_space:
+            for _ in range(0, allocated):
+                current_page.add(p, i)
+                i += 1
+                remaining_size -= 1
+
+        # Search for a new empty page if there is still need to allocate
+        while(remaining_size):
             current_page = None
             for page in self.memory:
                 if not(page.process):
@@ -106,20 +173,23 @@ class Page:
         self.addresses[self.size-self.idle_space] = process_address
         process.map[process_address] = self.location + self.size - self.idle_space - 1
         self.idle_space -= 1
+        process.size += 1
 
 
 class Process:
-    def __init__(self, name, size):
+    def __init__(self, name):
         self.name = name
-        self.size = size
+        self.size = 0
         self.map = {}
 
 
 if __name__ == "__main__":
     scheduler = reader.Reader("input.txt").read()
 
-    print(scheduler.commands)
+    # print(scheduler.commands)
     scheduler.mm.print_state()
-    scheduler.mm.add_process("p1", 20)
-    scheduler.mm.add_process("p2", 15)
-    scheduler.mm.print_state()
+    # scheduler.mm.add_process("p1", 20)
+    # scheduler.mm.add_process("p2", 15)
+    # scheduler.mm.print_state()
+
+    scheduler.run()

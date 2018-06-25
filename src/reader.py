@@ -18,8 +18,11 @@ class Reader:
             for x in line.split(" "):
                 line_data.append(x)
 
-            commands.append((str(line_data[0]), str(line_data[1]), int(line_data[2])))
+            if len(line_data) == 3:
+                commands.append((str(line_data[0]), str(line_data[1]), int(line_data[2])))
 
+            elif len(line_data) == 2:
+                commands.append((str(line_data[0]), str(line_data[1])))
 
         self.file.close()
 
