@@ -9,7 +9,7 @@
 # Alexandre Araujo (Ciência da Computação)
 # alexandre.henrique@acad.pucrs.br
 
-# Maio/2018
+# Junho/2018
 # ----------------------------
 # Simulador de Gerenciador de Memória
 
@@ -48,60 +48,71 @@ class MemoryManager:
 
         self.memory = []
         self.disk = []
+        self.processes = {}
 
-        for _ in range (0, memory_size//page_size):
-            self.memory.append(Page(page_size))
+        for i in range (0, memory_size//page_size):
+            self.memory.append(Page(page_size, (page_size*i), 'MEMORY'))
 
-        for _ in range (0, disk_size//page_size):
-            self.disk.append(Page(page_size))
+        for i in range (0, disk_size//page_size):
+            self.disk.append(Page(page_size, (memory_size+(page_size*i)), 'DISK'))
+
 
     def add_process(self, process_name, process_size):
+        p = Process(process_name, process_size)
+        self.processes[process_name] = p
         remaining_size = process_size
+        
+        i=0
         while remaining_size:
             current_page = None
             for page in self.memory:
-                if page.is_idle:
+                if not(page.process):
                     current_page = page
                     break
 
-            if remaining_size >= self.page_size:
-                current_page.is_idle = False
-                current_page.addresses = [process_name]*self.page_size
-                remaining_size -= self.page_size
+            if current_page != None:
+                current_page.process = p.name
+                allocated = min(self.page_size, remaining_size)
+                for _ in range(0, allocated):
+                    current_page.add(p, i)
+                    i += 1
+                remaining_size -= allocated
 
-            # Just for test
-            else:
-                current_page.is_idle = False
-                for i in range (0, remaining_size):
-                    current_page.addresses[i] = process_name
-                remaining_size = 0
 
-                
+
     def print_state(self):
         print("\nMemory:")
-        i=0
+
         for page in self.memory:
-            print("{}\t{}\t{}".format(i,page.addresses, (i+self.page_size-1)))
-            i += self.page_size
+            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(page.process), page.addresses, (page.location+self.page_size-1)))
 
         print("\nDisk:")
-        i=0
+
         for page in self.disk:
-            print("{}\t{}\t{}".format(i,page.addresses, (i+self.page_size-1)))
-            i += self.page_size      
+            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(page.process), page.addresses, (page.location+self.page_size-1)))
+
 
 class Page:
-    def __init__(self, size):
+    def __init__(self, size, location, level):
         self.size = size
         self.idle_space = size
-        self.is_idle = True
+        self.level = level
+        self.location = location
+        self.process = None
         self.addresses = [None]*self.size
+
+
+    def add(self, process, process_address):
+        self.addresses[self.size-self.idle_space] = process_address
+        process.map[process_address] = self.location + self.size - self.idle_space - 1
+        self.idle_space -= 1
 
 
 class Process:
     def __init__(self, name, size):
         self.name = name
         self.size = size
+        self.map = {}
 
 
 if __name__ == "__main__":
@@ -109,5 +120,6 @@ if __name__ == "__main__":
 
     print(scheduler.commands)
     scheduler.mm.print_state()
-    scheduler.mm.add_process("p1", 24)
+    scheduler.mm.add_process("p1", 20)
+    scheduler.mm.add_process("p2", 15)
     scheduler.mm.print_state()
