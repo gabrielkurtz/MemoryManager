@@ -24,6 +24,8 @@
 # algoritmos de trocas: LRU(Least Recently Used) ou aleatório.
 
 import reader
+from random import randint
+
 
 TIME = 0
 
@@ -39,7 +41,7 @@ class Scheduler:
         self.disk_size = disk_size
         self.commands = commands
 
-        self.mm = MemoryManager(page_size, memory_size, disk_size)
+        self.mm = MemoryManager(page_size, memory_size, disk_size, swap_alg)
 
     def run(self):
         if self.mode == 0:
@@ -77,10 +79,11 @@ class Scheduler:
             add_clock()
             
 class MemoryManager:
-    def __init__(self, page_size, memory_size, disk_size):
+    def __init__(self, page_size, memory_size, disk_size, swap_alg):
         self.page_size = page_size
         self.memory_size = memory_size
         self.disk_size = disk_size
+        self.swap_alg = swap_alg
 
         self.memory = []
         self.disk = []
@@ -144,26 +147,42 @@ class MemoryManager:
                 remaining_size -= 1                
                 continue
             
+            elif self.has_empty_page(self.disk):
+                for page in self.disk:
+                    if not(page.process):
+                        current_page = page
+                        break
+                self.swap(current_page, self.get_swap_candidate(self.swap_alg))
+
+
 
     def access(self, process_name, address, swap_alg):
         p = self.processes[process_name]
+        
+        # Check if search is in valid range
         if not(0 < address < p.size-1):
             print("--- ERROR: Invalid Address. Process: {} \tSize: {} \tRange: [0 - {}] ---".format(p.name, p.size, p.size-1))
             return False
         
         page = p.map[address][0]
+        # Page is in already in memory
         if page.level == 'MEMORY':
             if page.process == p.name and page.addresses[p.map[address][1]] == address:
                 print("Data succesfully accessed. Process: {} \tAddress: {} \tFound: {}-{}".format(p.name, address, page.process, page.addresses[p.map[address][1]]))
                 return True
 
+        # Page is in disk (need to swap to memory)
+        else:
+            swap_page = self.get_swap_candidate(swap_alg)
+            swap(page, swap_page)
 
-    def swap(page_1, page_2):
+
+
+    def swap(self, page_1, page_2):
         loc_1 = page_1.location
         loc_2 = page_2.location
         type_1 = page_1.level
         type_2 = page_2.level
-
 
         aux_page = page_1
         page_1 = page_2
@@ -173,6 +192,28 @@ class MemoryManager:
         page_2.location = loc_2
         page_1.level = type_1
         page_2.level = type_2
+
+
+    def get_swap_candidate(self, swap_alg):
+        if swap_alg == 0:
+            return self.get_candidate_lru()
+        elif swap_alg == 1:
+            return self.get_candidate_random()
+    
+    # TODO: implement lru algorithm
+    def get_candidate_lru(self):
+        return self.memory[randint(0, len(self.memory)-1)]        
+
+    # Return random memory page
+    def get_candidate_random(self):
+        return self.memory[randint(0, len(self.memory)-1)]
+
+
+    def has_empty_page(self, structure):
+        for page in structure:
+            if page.is_empty():
+                return True
+        return False
 
 
     def print_state(self):
@@ -205,6 +246,8 @@ class Page:
         process.size += 1
         self.last_used = TIME
 
+    def is_empty(self):
+        return self.size == self.idle_space
 
 class Process:
     def __init__(self, name):
