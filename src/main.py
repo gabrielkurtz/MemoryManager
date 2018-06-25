@@ -57,7 +57,9 @@ class Scheduler:
             
             # Access process data
             elif command[0].upper() == 'A':
-                print("--- Not implemented yet ---")
+                print("\n----------------\nAccessing process: {}\tPos: {}".format(command[1], command[2]))
+                self.mm.access(command[1], command[2], self.swap_alg)
+                self.mm.print_state()
 
             # Allocate more memory to process
             elif command[0].upper() == 'M':
@@ -125,7 +127,6 @@ class MemoryManager:
                 last_page.add(p, i, )
                 i += 1
                 remaining_size -= 1
-                print("Funcionou 1")
                 continue
 
             # Try to find a new empty page in memory
@@ -141,9 +142,21 @@ class MemoryManager:
                 current_page.add(p, i)
                 i += 1
                 remaining_size -= 1                
-                print("Funcionou 2")
                 continue
             
+
+    def access(self, process_name, address, swap_alg):
+        p = self.processes[process_name]
+        if not(0 < address < p.size-1):
+            print("--- ERROR: Invalid Address. Process: {} \tSize: {} \tRange: [0 - {}] ---".format(p.name, p.size, p.size-1))
+            return False
+        
+        page = p.map[address][0]
+        if page.level == 'MEMORY':
+            if page.process == p.name and page.addresses[p.map[address][1]] == address:
+                print("Data succesfully accessed. Process: {} \tAddress: {} \tFound: {}-{}".format(p.name, address, page.process, page.addresses[p.map[address][1]]))
+                return True
+
 
     def swap(page_1, page_2):
         loc_1 = page_1.location
@@ -160,7 +173,6 @@ class MemoryManager:
         page_2.location = loc_2
         page_1.level = type_1
         page_2.level = type_2
-
 
 
     def print_state(self):
