@@ -301,19 +301,21 @@ class MemoryManager:
             return False
 
         page = p.map[address][0]
-        # Page is in already in memory
-        if page.level == 'MEMORY':
-            if page.process == p.name and page.addresses[p.map[address][1]] == address:
-                pos = str(page.location + p.map[address][1])
-                print("Data succesfully accessed. Process: {} \tAddress: {} \tFound: {}-{} at Memory: {}".format(
-                    p.name, address, page.process, page.addresses[p.map[address][1]], pos))
-                page.last_used = TIME
-                return True
+        found = False
+        while not found:
+            # Page is in already in memory
+            if page.level == 'MEMORY':
+                if page.process == p.name and page.addresses[p.map[address][1]] == address:
+                    pos = str(page.location + p.map[address][1])
+                    print("Data succesfully accessed. Process: {} \tAddress: {} \tFound: {}-{} at Memory: {}".format(
+                        p.name, address, page.process, page.addresses[p.map[address][1]], pos))
+                    page.last_used = TIME
+                    return True
 
-        # Page is in disk (need to swap to memory)
-        else:
-            swap_page = self.get_swap_candidate(self.swap_alg)
-            self.swap(swap_page, page)
+            # Page is in disk (need to swap to memory)
+            else:
+                swap_page = self.get_swap_candidate(self.swap_alg)
+                self.swap(swap_page, page)
 
     
     def swap(self, mem_page, disk_page):
