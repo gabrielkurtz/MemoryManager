@@ -431,6 +431,12 @@ class Process:
     def __init__(self, name):
         self.name = name
         self.size = 0
+        
+        # Maps each of the process' absolute memory locations as positions in system memory/disk
+        # {i : [Page, j]}
+        # i - [0-Process.size) range process memory location
+        # Page - a page object where that part of the process is stored
+        # j - i's data location in Page.addresses[j]
         self.map = {}
 
 
