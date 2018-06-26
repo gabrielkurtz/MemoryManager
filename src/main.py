@@ -45,13 +45,14 @@ class Scheduler:
         self.mm = MemoryManager(page_size, memory_size, disk_size, swap_alg)
 
     def run(self):
+        add_clock()
         if self.mode == 0:
             self.run_commands()
 
     def run_commands(self):
 
         for command in self.commands:
-            print("Time:", TIME)
+            print("\nTime:", TIME-1)
             # Create a new process
             if command[0].upper() == 'C':
                 print(
@@ -226,6 +227,7 @@ class MemoryManager:
             if page.process == p.name and page.addresses[p.map[address][1]] == address:
                 print("Data succesfully accessed. Process: {} \tAddress: {} \tFound: {}-{}".format(
                     p.name, address, page.process, page.addresses[p.map[address][1]]))
+                page.last_used = TIME
                 return True
 
         # Page is in disk (need to swap to memory)
@@ -263,9 +265,17 @@ class MemoryManager:
         elif swap_alg == 1:
             return self.get_candidate_random()
 
-    # TODO: implement lru algorithm
+    # Return least recently used page
     def get_candidate_lru(self):
-        return self.memory[randint(0, 7)]
+        lru_page = self.memory[0]
+        lru_time = self.memory[0].last_used
+        
+        for page in self.memory:
+            if page.last_used < lru_time:
+                lru_page = page
+                lru_time = page.last_used
+        
+        return lru_page
 
     # Return random memory page
     def get_candidate_random(self):
@@ -294,14 +304,12 @@ class MemoryManager:
         print("\nMemory:")
 
         for page in self.memory:
-            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(
-                page.process), page.addresses, (page.location+self.page_size-1)))
+            print("Process: {}\tLast Use: {}\t{}\t{}\t{}".format(str(page.process), page.last_used, page.location, page.addresses, (page.location+self.page_size-1)))
 
         print("\nDisk:")
 
         for page in self.disk:
-            print("{}\tProcess: {}\t{}\t{}".format(page.location, str(
-                page.process), page.addresses, (page.location+self.page_size-1)))
+            print("Process: {}\tLast Use: {}\t{}\t{}\t{}".format(str(page.process), page.last_used, page.location, page.addresses, (page.location+self.page_size-1)))
 
 
 class Page:
@@ -312,7 +320,7 @@ class Page:
         self.location = location
         self.process = None
         self.addresses = [None]*self.size
-        self.last_used = None
+        self.last_used = TIME
 
     def add(self, process, process_address):
         self.addresses[self.size-self.idle_space] = process_address
