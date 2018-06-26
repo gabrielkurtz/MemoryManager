@@ -98,8 +98,7 @@ class MemoryManager:
             self.memory.append(Page(page_size, (page_size*i), 'MEMORY'))
 
         for i in range(0, disk_size//page_size):
-            self.disk.append(
-                Page(page_size, (memory_size+(page_size*i)), 'DISK'))
+            self.disk.append(Page(page_size, (page_size*i), 'DISK'))
 
     def add_process(self, process_name, process_size):
         p = Process(process_name)
@@ -166,7 +165,7 @@ class MemoryManager:
         p = self.processes[process_name]
 
         # Check if search is in valid range
-        if not(0 < address < p.size-1):
+        if not(0 <= address < p.size):
             print("--- ERROR: Invalid Address. Process: {} \tSize: {} \tRange: [0 - {}] ---".format(
                 p.name, p.size, p.size-1))
             return False
