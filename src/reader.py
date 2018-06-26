@@ -1,4 +1,4 @@
-from main import Scheduler
+from main import Runtime
 
 class Reader:
     def __init__(self, filename):
@@ -26,4 +26,4 @@ class Reader:
 
         self.file.close()
 
-        return Scheduler(mode, swap_alg, page_size, memory_size, disk_size, commands)
+        return Runtime(mode, swap_alg, page_size, memory_size, disk_size, commands)
