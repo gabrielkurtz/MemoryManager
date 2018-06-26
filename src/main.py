@@ -27,8 +27,8 @@ import reader
 from random import randint
 
 # Input file
-INPUT_FILE = "input_random.txt"
-# INPUT_FILE = "input.txt"
+# INPUT_FILE = "input_random.txt"
+INPUT_FILE = "input.txt"
 
 # Chance for random process to allocate more memory
 PROC_ALLOCATE = 25
