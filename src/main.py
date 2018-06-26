@@ -105,14 +105,28 @@ class MemoryManager:
         self.processes[process_name] = p
         remaining_size = process_size
 
+        free_space = 0
+        for page in self.memory:
+            if page.process == None:
+                free_space += page.idle_space
+        for page in self.disk:
+            if page.process == None:
+                free_space += page.idle_space
+        if free_space < process_size:
+            print("--- ERROR: Not enough memory to create process ---")
+#            self.print_state()
+            return
+        
         i = 0
         while remaining_size:
+            # Try to find a new empty page in memory
             current_page = None
             for page in self.memory:
                 if not(page.process):
                     current_page = page
                     break
 
+            # Found an empty memory page
             if current_page != None:
                 current_page.process = p.name
                 allocated = min(self.page_size, remaining_size)
@@ -121,11 +135,39 @@ class MemoryManager:
                     i += 1
                 remaining_size -= allocated
 
+            # Try to find disk space and swap
+            elif self.has_empty_page(self.disk):
+                for page in self.disk:
+                    if not(page.process):
+                        current_page = page
+                        break
+                swap_page = self.get_swap_candidate(self.swap_alg)
+                print("Page Location: {}  Elements: {}  -  Swap Page Loc: {}  Elements: {}".format(
+                    current_page.location, current_page.addresses, swap_page.location, swap_page.addresses))
+                self.swap(swap_page, current_page)
+
+            else:
+                print("--- ERROR: Unknown flow error ---")
+                break                
+
     def allocate(self, process_name, allocated):
         p = self.processes[process_name]
         remaining_size = allocated
         i = p.size
 
+        free_space = 0
+        for page in self.memory:
+            if page.process == None or page.process == process_name:
+                free_space += page.idle_space
+        for page in self.disk:
+            if page.process == None or page.process == process_name:
+                free_space += page.idle_space
+        if free_space < allocated:
+            print("--- ERROR: Not enough memory to allocate process ---")
+#            self.print_state()
+            return
+
+        
         while remaining_size:
             # In case there's still room in the latest process' page
             last_page = p.map[i-1][0]
@@ -150,6 +192,7 @@ class MemoryManager:
                 remaining_size -= 1
                 continue
 
+            # Try to find disk space and swap
             elif self.has_empty_page(self.disk):
                 for page in self.disk:
                     if not(page.process):
@@ -159,6 +202,10 @@ class MemoryManager:
                 print("Page Location: {}  Elements: {}  -  Swap Page Loc: {}  Elements: {}".format(
                     current_page.location, current_page.addresses, swap_page.location, swap_page.addresses))
                 self.swap(swap_page, current_page)
+
+            else:
+                print("--- ERROR: Unknown flow error ---")
+                break
 
 
     def access(self, process_name, address, swap_alg):
