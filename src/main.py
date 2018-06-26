@@ -27,13 +27,13 @@ import reader
 from random import randint
 
 # Input file
-# INPUT_FILE = "input_random.txt"
-INPUT_FILE = "input.txt"
+INPUT_FILE = "input_random.txt"
+# INPUT_FILE = "input.txt"
 
 # Chance for random process to allocate more memory
 PROC_ALLOCATE = 25
 # Chance for random process to terminate
-PROC_TERMINATE = 15
+PROC_TERMINATE = 0
 
 # Global time variable
 TIME = 0
@@ -127,9 +127,9 @@ class Runtime:
 
         # Start processes until memory and disk are reasonably full
         i = 1
-        while starting_memory > 0:
+        while i < 129:
             new_process_name = "p" + str(i)
-            new_process_size = randint(1,(starting_memory//2)+1)
+            new_process_size = randint(1,128)
             print("\n----------------\nCreating process: {}\tSize: {}".format(new_process_name, new_process_size))    
             self.mm.add_process(new_process_name, new_process_size)
             self.mm.print_state()
@@ -157,7 +157,7 @@ class Runtime:
                 # Try to access a valid memory location from process
                 else:
                     size = self.mm.processes[process].size
-                    pos = randint(0,size-1)
+                    pos = randint(0,max(1,size-1))
                     print("\n----------------\nAccessing process: {}\tPos: {}".format(process, pos))
                     self.mm.access(process, pos)
                     self.mm.print_state()                    
