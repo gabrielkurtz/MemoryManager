@@ -26,9 +26,13 @@
 import reader
 from random import randint
 
+# Chance for random process to allocate more memory
+PROC_ALLOCATE = 25
+# Chance for random process to terminate
+PROC_TERMINATE = 15
 
+# Global time variable
 TIME = 0
-
 
 class Scheduler:
     def __init__(self, mode, swap_alg, page_size, memory_size, disk_size, commands=[]):
@@ -48,11 +52,15 @@ class Scheduler:
         add_clock()
         if self.mode == 0:
             self.run_commands()
+        elif self.mode == 1:
+            self.run_random()
+        else:
+            print("--- ERROR: Unknown mode. 0-Sequential, 1-Random ---")
+        
 
     def run_commands(self):
 
         for command in self.commands:
-            print("\nTime:", TIME-1)
             # Create a new process
             if command[0].upper() == 'C':
                 print(
@@ -64,7 +72,7 @@ class Scheduler:
             elif command[0].upper() == 'A':
                 print(
                     "\n----------------\nAccessing process: {}\tPos: {}".format(command[1], command[2]))
-                self.mm.access(command[1], command[2], self.swap_alg)
+                self.mm.access(command[1], command[2])
                 self.mm.print_state()
 
             # Allocate more memory to process
@@ -86,6 +94,49 @@ class Scheduler:
 
             add_clock()
 
+    def run_random(self):
+        print("\nTime:", TIME-1)
+        
+        total_memory = self.disk_size + self.memory_size
+        starting_memory = total_memory/3
+
+        # Start processes until memory and disk are reasonably full
+        i = 1
+        while starting_memory > 0:
+            new_process_name = "p" + str(i)
+            new_process_size = randint(1,(starting_memory//2)+1)
+            print("\n----------------\nCreating process: {}\tSize: {}".format(new_process_name, new_process_size))    
+            self.mm.add_process(new_process_name, new_process_size)
+            self.mm.print_state()
+            starting_memory -= new_process_size
+            i += 1
+            add_clock()
+
+        while self.mm.processes:
+            copy_processes = dict(self.mm.processes)
+            for process in copy_processes:
+                
+                if randint(0,99) < PROC_TERMINATE:
+                    print("\n----------------\nTerminating process: {}".format(process))
+                    self.mm.terminate(process)
+                    self.mm.print_state()
+                    add_clock()
+
+                elif randint(0,99) < PROC_ALLOCATE:
+                    size = randint(1, total_memory//4)
+                    print("\n----------------\nAllocating process: {}\tSize: {}".format(process, size))
+                    self.mm.allocate(process, size)
+                    self.mm.print_state()
+                    add_clock()               
+
+                else:
+                    size = self.mm.processes[process].size
+                    pos = randint(0,size-1)
+                    print("\n----------------\nAccessing process: {}\tPos: {}".format(process, pos))
+                    self.mm.access(process, pos)
+                    self.mm.print_state()
+                    add_clock()
+                    
 
 class MemoryManager:
     def __init__(self, page_size, memory_size, disk_size, swap_alg):
@@ -146,8 +197,6 @@ class MemoryManager:
                         current_page = page
                         break
                 swap_page = self.get_swap_candidate(self.swap_alg)
-                print("Page Location: {}  Elements: {}  -  Swap Page Loc: {}  Elements: {}".format(
-                    current_page.location, current_page.addresses, swap_page.location, swap_page.addresses))
                 self.swap(swap_page, current_page)
 
             else:
@@ -203,8 +252,6 @@ class MemoryManager:
                         current_page = page
                         break
                 swap_page = self.get_swap_candidate(self.swap_alg)
-                print("Page Location: {}  Elements: {}  -  Swap Page Loc: {}  Elements: {}".format(
-                    current_page.location, current_page.addresses, swap_page.location, swap_page.addresses))
                 self.swap(swap_page, current_page)
 
             else:
@@ -212,7 +259,7 @@ class MemoryManager:
                 break
 
 
-    def access(self, process_name, address, swap_alg):
+    def access(self, process_name, address):
         p = self.processes[process_name]
 
         # Check if search is in valid range
@@ -232,9 +279,7 @@ class MemoryManager:
 
         # Page is in disk (need to swap to memory)
         else:
-            swap_page = self.get_swap_candidate(swap_alg)
-            print("Page Location: {}  Elements: {}  -  Swap Page Loc: {}  Elements: {}".format(
-                page.location, page.addresses, swap_page.location, swap_page.addresses))
+            swap_page = self.get_swap_candidate(self.swap_alg)
             self.swap(swap_page, page)
 
     
@@ -243,6 +288,10 @@ class MemoryManager:
         loc_2 = disk_page.location
         type_1 = mem_page.level
         type_2 = disk_page.level
+
+        print("Page Fault - Swapping Pages\nPage 1 - Location: {} {}\tUsed: {}  Elements: {} {}\nPage 2 - Location: {} {}\tUsed: {}  Elements: {} {}".format(
+                mem_page.level, mem_page.location, mem_page.last_used, mem_page.process, mem_page.addresses, 
+                disk_page.level, disk_page.location, disk_page.last_used, disk_page.process, disk_page.addresses))
 
         aux = mem_page
         for i in range(0, len(self.memory)):
@@ -311,6 +360,8 @@ class MemoryManager:
         for page in self.disk:
             print("Process: {}\tLast Use: {}\t{}\t{}\t{}".format(str(page.process), page.last_used, page.location, page.addresses, (page.location+self.page_size-1)))
 
+        print("\nTime:", TIME)
+
 
 class Page:
     def __init__(self, size, location, level):
@@ -343,15 +394,9 @@ class Process:
 def add_clock():
     global TIME
     TIME += 1
-
+    
 
 if __name__ == "__main__":
-    scheduler = reader.Reader("input.txt").read()
-
-    # print(scheduler.commands)
+    scheduler = reader.Reader("input_random.txt").read()
     scheduler.mm.print_state()
-    # scheduler.mm.add_process("p1", 20)
-    # scheduler.mm.add_process("p2", 15)
-    # scheduler.mm.print_state()
-
     scheduler.run()
