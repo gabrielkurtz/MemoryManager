@@ -26,6 +26,10 @@
 import reader
 from random import randint
 
+# Input file
+INPUT_FILE = "input_random.txt"
+#INPUT_FILE = "input.txt"
+
 # Chance for random process to allocate more memory
 PROC_ALLOCATE = 25
 # Chance for random process to terminate
@@ -397,6 +401,6 @@ def add_clock():
     
 
 if __name__ == "__main__":
-    scheduler = reader.Reader("input_random.txt").read()
+    scheduler = reader.Reader(INPUT_FILE).read()
     scheduler.mm.print_state()
     scheduler.run()
