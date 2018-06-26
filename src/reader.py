@@ -22,7 +22,7 @@ class Reader:
                 commands.append((str(line_data[0]), str(line_data[1]), int(line_data[2])))
 
             elif len(line_data) == 2:
-                commands.append((str(line_data[0]), str(line_data[1])))
+                commands.append((str(line_data[0]), str(line_data[1]).rstrip()))
 
         self.file.close()
 

@@ -75,7 +75,10 @@ class Scheduler:
 
             # Terminate process
             elif command[0].upper() == 'T':
-                print("--- Not implemented yet ---")
+                print(
+                    "\n----------------\nTerminating process: {}".format(command[1]))
+                self.mm.terminate(command[1])
+                self.mm.print_state()
 
             else:
                 print("--- ERROR: Invalid Command ---")
@@ -232,6 +235,7 @@ class MemoryManager:
                 page.location, page.addresses, swap_page.location, swap_page.addresses))
             self.swap(swap_page, page)
 
+    
     def swap(self, mem_page, disk_page):
         loc_1 = mem_page.location
         loc_2 = disk_page.location
@@ -253,8 +257,6 @@ class MemoryManager:
                 self.disk[i] = aux
                 break
 
-
-
     def get_swap_candidate(self, swap_alg):
         if swap_alg == 0:
             return self.get_candidate_lru()
@@ -268,6 +270,19 @@ class MemoryManager:
     # Return random memory page
     def get_candidate_random(self):
         return self.memory[randint(0, 7)]
+
+    def terminate(self, process_name):
+        for i in range(0, self.memory_size//self.page_size):
+            if self.memory[i].process == process_name:
+                aux = self.memory[i]
+                self.memory[i]=Page(self.page_size, aux.location, 'MEMORY')
+
+        for i in range(0, self.disk_size//self.page_size):
+            if self.disk[i].process == process_name:
+                aux = self.disk[i]
+                self.disk[i]=Page(self.page_size, aux.location, 'DISK')
+    
+        self.processes.pop(process_name, None)
 
     def has_empty_page(self, structure):
         for page in structure:
