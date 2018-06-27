@@ -129,7 +129,7 @@ class Runtime:
         i = 1
         while i < 129:
             new_process_name = "p" + str(i)
-            new_process_size = randint(1, max(1, total_memory//8))
+            new_process_size = randint(1, max(2, total_memory//8))
             print("\n----------------\nCreating process: {}\tSize: {}".format(new_process_name, new_process_size))    
             self.mm.add_process(new_process_name, new_process_size)
             self.mm.print_state()
